@@ -1,11 +1,19 @@
 package ch.zhaw.buergli1.project2;
 
+import org.deeplearning4j.datasets.iterator.utilty.ListDataSetIterator;
+import org.deeplearning4j.eval.Evaluation;
+import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
+import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.dataset.DataSet;
+import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
+import org.nd4j.linalg.factory.Nd4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -16,6 +24,8 @@ import java.util.List;
 
 @Component
 public class WaterQualityDataLoader implements ApplicationRunner {
+    private static final double VALIDATION_SPLIT = 0.2; // 20% of the data for validation
+    private static final int BATCH_SIZE = 32;
 
     @Value("classpath:output.csv")
     private InputStream csvFile;
@@ -23,8 +33,9 @@ public class WaterQualityDataLoader implements ApplicationRunner {
     private final List<WaterQualityData> waterQualityData = new ArrayList<>();
 
     @Override
-    public void run(ApplicationArguments args) {
+    public void run(ApplicationArguments args) throws IOException {
         readCsvFile();
+        trainModel();
     }
 
     private void readCsvFile() {
@@ -97,5 +108,88 @@ public class WaterQualityDataLoader implements ApplicationRunner {
 
     public List<WaterQualityData> getWaterQualityData() {
         return waterQualityData;
+    }
+
+    public void trainModel() throws IOException {
+        // Load the full dataset
+        List<WaterQualityData> waterQualityData = getWaterQualityData();
+
+        // Split the dataset into training and validation sets
+        int validationSize = (int) (waterQualityData.size() * VALIDATION_SPLIT);
+        List<WaterQualityData> trainingData = new ArrayList<>(waterQualityData.subList(0, waterQualityData.size() - validationSize));
+        List<WaterQualityData> validationData = new ArrayList<>(waterQualityData.subList(waterQualityData.size() - validationSize, waterQualityData.size()));
+
+        // Create the iterators
+        DataSetIterator trainIterator = loadTrainingData(trainingData);
+        DataSetIterator validationIterator = loadTestingData(validationData);
+
+        // Create and train the model
+        MultiLayerNetwork model = NeuralNetworkModule.createModel();
+        trainModel(model, trainIterator, validationIterator);
+    }
+
+    public static void trainModel(MultiLayerNetwork model, DataSetIterator trainIterator, DataSetIterator testIterator) throws IOException {
+        int epochs = 100;
+
+        for (int i = 0; i < epochs; i++) {
+            model.fit(trainIterator);
+            evaluateModel(model, testIterator);
+        }
+
+        // Save the trained model
+        model.save(new File("trained_model.zip"));
+    }
+
+    private static void evaluateModel(MultiLayerNetwork model, DataSetIterator testIterator) {
+        Evaluation evaluation = model.evaluate(testIterator);
+        double f1Score = evaluation.f1();
+        double precision = evaluation.precision();
+        double recall = evaluation.recall();
+        double accuracy = evaluation.accuracy();
+    
+        System.out.println("Test F1 score: " + f1Score);
+        System.out.println("Test Precision: " + precision);
+        System.out.println("Test Recall: " + recall);
+        System.out.println("Test Accuracy: " + accuracy);
+    }    
+
+    private static DataSetIterator loadTrainingData(List<WaterQualityData> data) {
+        List<org.nd4j.linalg.dataset.DataSet> dataSets = new ArrayList<>();
+        for (WaterQualityData waterQualityData : data) {
+            double[] features = new double[] {
+                waterQualityData.getSalinity(),
+                waterQualityData.getDissolvedOxygen(),
+                //waterQualityData.getpH(),
+                waterQualityData.getSecchiDepth(),
+                waterQualityData.getWaterDepth(),
+                waterQualityData.getWaterTemperature(),
+                waterQualityData.getAirTemperature()
+            };
+            INDArray input = Nd4j.create(features);
+            INDArray label = Nd4j.create(new double[] { waterQualityData.getpH() }, new int[] { 1 });
+            dataSets.add(new DataSet(input, label));
+        }
+
+        return new ListDataSetIterator<>(dataSets, BATCH_SIZE);
+    }
+
+    private static DataSetIterator loadTestingData(List<WaterQualityData> data) {
+        List<org.nd4j.linalg.dataset.DataSet> dataSets = new ArrayList<>();
+        for (WaterQualityData waterQualityData : data) {
+            double[] features = new double[] {
+                waterQualityData.getSalinity(),
+                waterQualityData.getDissolvedOxygen(),
+                waterQualityData.getpH(),
+                waterQualityData.getSecchiDepth(),
+                waterQualityData.getWaterDepth(),
+                waterQualityData.getWaterTemperature(),
+                waterQualityData.getAirTemperature()
+            };
+            INDArray input = Nd4j.create(features);
+            INDArray label = Nd4j.create(new double[] { waterQualityData.getpH() }, new int[] { 1 });
+            dataSets.add(new DataSet(input, label));
+        }
+    
+        return new ListDataSetIterator<>(dataSets, BATCH_SIZE);
     }
 }
