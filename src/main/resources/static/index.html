@@ -1,105 +1,128 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Time Series Prediction</title>
+    <title>Water Quality Prediction</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-image: url('background.jpg');
+            background-size: cover;
+            background-position: center;
+            color: white;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        
+        h1 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+        
+        form {
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            color: #333;
+        }
+        
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        input[type="number"] {
+            width: 200px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            margin-bottom: 10px;
+        }
+        
+        input[type="submit"] {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        #response {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+    </style>
 </head>
-
 <body>
-    <h1>Time Series Prediction</h1>
+    <div class="container">
+        <h1>Water Quality Prediction</h1>
+        <form id="predictionForm">
+            <label for="salinity">Salinität (ppt):</label>
+            <input type="number" id="salinity" required><br>
 
-    <div>
-        <label for="site-id">Site ID:</label>
-        <input type="text" id="site-id" name="site-id">
+            <label for="dissolvedOxygen">Gelöster Sauerstoff (mg/L):</label>
+            <input type="number" id="dissolvedOxygen" required><br>
+
+            <label for="secchiDepth">Secchi-Tiefe (m):</label>
+            <input type="number" id="secchiDepth" required><br>
+
+            <label for="waterDepth">Wassertiefe (m):</label>
+            <input type="number" id="waterDepth" required><br>
+
+            <label for="waterTemperature">Wassertemperatur (°C):</label>
+            <input type="number" id="waterTemperature" required><br>
+
+            <label for="airTemperature">Lufttemperatur (°C):</label>
+            <input type="number" id="airTemperature" required><br>
+
+            <input type="submit" value="pH vorhersagen">
+        </form>
+
+        <p id="response"></p>
     </div>
 
-    <div>
-        <label for="unit-id">Unit ID:</label>
-        <input type="text" id="unit-id" name="unit-id">
-    </div>
-
-    <div>
-        <label for="read-date">Read Date:</label>
-        <input type="date" id="read-date" name="read-date">
-    </div>
-
-    <div>
-        <label for="salinity">Salinity (ppt):</label>
-        <input type="number" id="salinity" name="salinity">
-    </div>
-
-    <div>
-        <label for="dissolved-oxygen">Dissolved Oxygen (mg/L):</label>
-        <input type="number" id="dissolved-oxygen" name="dissolved-oxygen">
-    </div>
-
-    <div>
-        <label for="ph">pH (standard units):</label>
-        <input type="number" id="ph" name="ph">
-    </div>
-
-    <div>
-        <label for="secchi-depth">Secchi Depth (m):</label>
-        <input type="number" id="secchi-depth" name="secchi-depth">
-    </div>
-
-    <div>
-        <label for="water-depth">Water Depth (m):</label>
-        <input type="number" id="water-depth" name="water-depth">
-    </div>
-
-    <div>
-        <label for="water-temp">Water Temp (°C):</label>
-        <input type="number" id="water-temp" name="water-temp">
-    </div>
-
-    <div>
-        <label for="air-temp-celsius">Air Temp (°C):</label>
-        <input type="number" id="air-temp-celsius" name="air-temp-celsius">
-    </div>
-
-    <div>
-        <label for="air-temp-fahrenheit">Air Temp (°F):</label>
-        <input type="number" id="air-temp-fahrenheit" name="air-temp-fahrenheit">
-    </div>
-
-    <div>
-        <label for="time">Time (24:00):</label>
-        <input type="text" id="time" name="time">
-    </div>
-
-    <div>
-        <label for="field-tech">Field Tech:</label>
-        <input type="text" id="field-tech" name="field-tech">
-    </div>
-
-    <div>
-        <label for="date-verified">Date Verified:</label>
-        <input type="date" id="date-verified" name="date-verified">
-    </div>
-
-    <div>
-        <label for="who-verified">Who Verified:</label>
-        <input type="text" id="who-verified" name="who-verified">
-    </div>
-
-    <div>
-        <label for="air-temp-c">Air Temp (C):</label>
-        <input type="number" id="air-temp-c" name="air-temp-c">
-    </div>
-
-    <div>
-        <label for="year">Year:</label>
-        <input type="number" id="year" name="year">
-    </div>
-
-    <button onclick="predictWaterTemp()">Predict Water Temperature</button>
-
-    <div id="prediction-result"></div>
-
-    <script src="script.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#predictionForm').submit(function(event) {
+                event.preventDefault();
+                
+                var formData = {
+                    salinity: $('#salinity').val(),
+                    dissolvedOxygen: $('#dissolvedOxygen').val(),
+                    secchiDepth: $('#secchiDepth').val(),
+                    waterDepth: $('#waterDepth').val(),
+                    waterTemperature: $('#waterTemperature').val(),
+                    airTemperature: $('#airTemperature').val()
+                };
+                
+                $.ajax({
+                    type: 'POST',
+                    url: '/predict',
+                    data: JSON.stringify(formData),
+                    contentType: 'application/json; charset=utf-8',
+                    dataType: 'json',
+                    success: function(data) {
+                        $('#response').html('The predicted pH is: ' + data.predictedpH + ' standard units');
+                    },
+                    error: function(xhr, status, error) {
+                        $('#response').html('Error: ' + error);
+                    }
+                });
+            });
+        });
+    </script>
 </body>
-
 </html>

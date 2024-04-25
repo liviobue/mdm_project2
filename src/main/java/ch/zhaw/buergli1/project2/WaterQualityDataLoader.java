@@ -5,7 +5,11 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
+import weka.core.DenseInstance;
+import weka.core.Instances;
+
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -14,17 +18,23 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
+import weka.classifiers.functions.LinearRegression;
+import weka.core.Attribute;
+
 @Component
 public class WaterQualityDataLoader implements ApplicationRunner {
 
     @Value("classpath:output.csv")
     private InputStream csvFile;
 
+    private LinearRegression model;
+
     private final List<WaterQualityData> waterQualityData = new ArrayList<>();
 
     @Override
-    public void run(ApplicationArguments args) {
+    public void run(ApplicationArguments args) throws Exception {
         readCsvFile();
+        trainRegression();
     }
 
     private void readCsvFile() {
@@ -97,5 +107,66 @@ public class WaterQualityDataLoader implements ApplicationRunner {
 
     public List<WaterQualityData> getWaterQualityData() {
         return waterQualityData;
+    }
+
+    public Instances createWekaInstances() {
+        ArrayList<Attribute> attributes = new ArrayList<>();
+        attributes.add(new Attribute("Salinity"));
+        attributes.add(new Attribute("DissolvedOxygen"));
+        attributes.add(new Attribute("SecchiDepth"));
+        attributes.add(new Attribute("WaterDepth"));
+        attributes.add(new Attribute("WaterTemperature"));
+        attributes.add(new Attribute("AirTemperature"));
+        attributes.add(new Attribute("pH"));
+
+        Instances data = new Instances("WaterQualityData", attributes, 0);
+        data.setClassIndex(data.numAttributes() - 1);
+
+        for (WaterQualityData waterData : waterQualityData) {
+            DenseInstance instance = new DenseInstance(data.numAttributes());
+            instance.setValue(0, waterData.getSalinity());
+            instance.setValue(1, waterData.getDissolvedOxygen());
+            instance.setValue(2, waterData.getSecchiDepth());
+            instance.setValue(3, waterData.getWaterDepth());
+            instance.setValue(4, waterData.getWaterTemperature());
+            instance.setValue(5, waterData.getAirTemperature());
+            instance.setValue(6, waterData.getpH());
+            data.add(instance);
+        }
+
+        return data;
+    }
+
+    public void trainRegression() throws Exception {
+        Instances data = createWekaInstances();
+
+        model = new LinearRegression();
+        model.buildClassifier(data);
+    
+        // Create a linear regression model
+        LinearRegression model = new LinearRegression();
+        model.buildClassifier(data);
+    
+        // Evaluate the model
+        weka.classifiers.evaluation.Evaluation eval = new weka.classifiers.evaluation.Evaluation(data);
+        eval.crossValidateModel(model, data, 10, data.getRandomNumberGenerator(1));
+        System.out.println(eval.toSummaryString());
+    
+        // Save the model to a file
+        File modelFile = new File("waterQualityModel.model");
+        weka.core.SerializationHelper.write(modelFile.getAbsolutePath(), model);
+    }
+
+    public double predictpH(WaterQualityData waterQualityData) throws Exception {
+        Instances data = createWekaInstances();
+        DenseInstance instance = new DenseInstance(data.numAttributes());
+        instance.setValue(0, waterQualityData.getSalinity());
+        instance.setValue(1, waterQualityData.getDissolvedOxygen());
+        instance.setValue(2, waterQualityData.getSecchiDepth());
+        instance.setValue(3, waterQualityData.getWaterDepth());
+        instance.setValue(4, waterQualityData.getWaterTemperature());
+        instance.setValue(5, waterQualityData.getAirTemperature());
+        data.add(instance);
+        return model.classifyInstance(instance);
     }
 }

@@ -110,4 +110,8 @@ public class WaterQualityData {
         this.airTemperature = airTemperature;
     }
 
+    public WaterQualityData() {
+        //TODO Auto-generated constructor stub
+    }
+
 }
