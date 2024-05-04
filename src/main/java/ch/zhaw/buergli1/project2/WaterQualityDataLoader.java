@@ -47,12 +47,12 @@ public class WaterQualityDataLoader implements ApplicationRunner {
             while ((line = reader.readLine()) != null) {
                 // Split line by commas (",")
                 String[] values = line.split(",");
-    
+
                 // Remove surrounding quotes from each value
                 for (int i = 0; i < values.length; i++) {
                     values[i] = values[i].replaceAll("^\"|\"$", "");
                 }
-    
+
                 WaterQualityData data = createWaterQualityData(values);
                 waterQualityData.add(data);
             }
@@ -91,7 +91,7 @@ public class WaterQualityDataLoader implements ApplicationRunner {
         double waterDepth = Double.parseDouble(values[7]); // 0.4
         double waterTemperature = Double.parseDouble(values[8]); // 5.9
         double airTemperature = Double.parseDouble(values[9]); // 8
-        // 46.4 
+        // 46.4
         // LocalTime time = LocalTime.parse(values[11], timeFormatter); // 11:00
         // String fieldTech = values[11]; // 0
         // LocalDate dateVerified = LocalDate.parse(values[12], dateFormatter); // 0
@@ -100,9 +100,8 @@ public class WaterQualityDataLoader implements ApplicationRunner {
         // int year = Integer.parseInt(values[15]); // 1994
 
         return new WaterQualityData(
-            siteId, unitId, readDate, salinity, dissolvedOxygen, pH, secchiDepth, waterDepth,
-            waterTemperature, airTemperature
-        );
+                siteId, unitId, readDate, salinity, dissolvedOxygen, pH, secchiDepth, waterDepth,
+                waterTemperature, airTemperature);
     }
 
     public List<WaterQualityData> getWaterQualityData() {
@@ -142,16 +141,16 @@ public class WaterQualityDataLoader implements ApplicationRunner {
 
         model = new LinearRegression();
         model.buildClassifier(data);
-    
+
         // Create a linear regression model
         LinearRegression model = new LinearRegression();
         model.buildClassifier(data);
-    
+
         // Evaluate the model
         weka.classifiers.evaluation.Evaluation eval = new weka.classifiers.evaluation.Evaluation(data);
         eval.crossValidateModel(model, data, 10, data.getRandomNumberGenerator(1));
         System.out.println(eval.toSummaryString());
-    
+
         // Save the model to a file
         File modelFile = new File("waterQualityModel.model");
         weka.core.SerializationHelper.write(modelFile.getAbsolutePath(), model);
@@ -168,5 +167,9 @@ public class WaterQualityDataLoader implements ApplicationRunner {
         instance.setValue(5, waterQualityData.getAirTemperature());
         data.add(instance);
         return model.classifyInstance(instance);
+    }
+
+    public void trainModel() throws Exception{
+        // TODO
     }
 }
