@@ -20,6 +20,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
 import ai.djl.basicdataset.tabular.CsvDataset;
+import ai.djl.engine.Engine;
 import ai.djl.metric.Metrics;
 import ai.djl.training.EasyTrain;
 import ai.djl.training.Trainer;
@@ -178,20 +179,21 @@ public class Training implements ApplicationRunner {
 
     private RandomAccessDataset[] createTest(List<WaterQualityData> waterQualityData) {
         // Prepare the data
+        NDManager manager = NDManager.newBaseManager("OnnxRuntime");
         NDArray[] features = new NDArray[waterQualityData.size()];
-        NDArray labels = NDManager.newBaseManager().create(new Shape(waterQualityData.size()));
+        NDArray labels = manager.create(new Shape(waterQualityData.size()));
         for (int i = 0; i < waterQualityData.size(); i++) {
             WaterQualityData data = waterQualityData.get(i);
-            features[i] = NDManager.newBaseManager().create(new float[] {
+            features[i] = manager.create(new float[] {
                     (float) data.getSalinity(),
                     (float) data.getDissolvedOxygen(),
                     (float) data.getpH(),
                     (float) data.getSecchiDepth(),
                     (float) data.getWaterDepth()
             });
-            labels.set(new NDIndex(i), NDManager.newBaseManager().create(getSiteIdIndex(data.getSiteId())));
+            labels.set(new NDIndex(i), manager.create(getSiteIdIndex(data.getSiteId())));
         }
-
+    
         // Split the data into training and validation sets
         RandomAccessDataset trainDataset = new ArrayDataset.Builder()
                 .setData(features)
@@ -203,9 +205,10 @@ public class Training implements ApplicationRunner {
                 .optLabels(labels)
                 .setSampling(64, false)
                 .build();
-
+    
         return new RandomAccessDataset[] { trainDataset, validationDataset };
     }
+    
 
     private int getSiteIdIndex(String siteId) {
         switch (siteId) {
