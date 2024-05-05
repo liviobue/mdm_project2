@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
     <title>Water Quality Prediction</title>
@@ -14,7 +15,7 @@
             background-position: center;
             color: white;
         }
-        
+
         .container {
             display: flex;
             flex-direction: column;
@@ -23,12 +24,12 @@
             height: 100vh;
             background-color: rgba(0, 0, 0, 0.5);
         }
-        
+
         h1 {
             font-size: 36px;
             margin-bottom: 20px;
         }
-        
+
         form {
             background-color: rgba(255, 255, 255, 0.8);
             padding: 30px;
@@ -36,13 +37,13 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
             color: #333;
         }
-        
+
         label {
             display: block;
             font-weight: bold;
             margin-bottom: 5px;
         }
-        
+
         input[type="number"] {
             width: 200px;
             padding: 5px;
@@ -50,7 +51,7 @@
             border-radius: 3px;
             margin-bottom: 10px;
         }
-        
+
         input[type="submit"] {
             background-color: #4CAF50;
             color: white;
@@ -59,13 +60,14 @@
             border-radius: 3px;
             cursor: pointer;
         }
-        
+
         #response {
             margin-top: 20px;
             font-size: 18px;
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>Water Quality Prediction</h1>
@@ -89,16 +91,45 @@
             <input type="number" id="airTemperature" required><br>
 
             <input type="submit" value="pH vorhersagen">
+
+            <button id="predictButton">Make Prediction with nural network</button>
         </form>
 
         <p id="response"></p>
+
+        <table>
+            <tr>
+                <th>Index</th>
+                <th>Label</th>
+            </tr>
+            <tr>
+                <td>0</td>
+                <td>Bay</td>
+            </tr>
+            <tr>
+                <td>1</td>
+                <td>A</td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>B</td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td>C</td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>D</td>
+            </tr>
+        </table>
     </div>
 
     <script>
-        $(document).ready(function() {
-            $('#predictionForm').submit(function(event) {
+        $(document).ready(function () {
+            $('#predictionForm').submit(function (event) {
                 event.preventDefault();
-                
+
                 var formData = {
                     salinity: $('#salinity').val(),
                     dissolvedOxygen: $('#dissolvedOxygen').val(),
@@ -107,22 +138,52 @@
                     waterTemperature: $('#waterTemperature').val(),
                     airTemperature: $('#airTemperature').val()
                 };
-                
+
                 $.ajax({
                     type: 'POST',
                     url: '/predict',
                     data: JSON.stringify(formData),
                     contentType: 'application/json; charset=utf-8',
                     dataType: 'json',
-                    success: function(data) {
+                    success: function (data) {
                         $('#response').html('The predicted pH is: ' + data.predictedpH + ' standard units');
                     },
-                    error: function(xhr, status, error) {
+                    error: function (xhr, status, error) {
                         $('#response').html('Error: ' + error);
                     }
+                });
+
+                $('#predictButton').click(function () {
+                    var input = [
+                        parseFloat($('#salinity').val()),  
+                        parseFloat($('#dissolvedOxygen').val()),
+                        parseFloat($('#secchiDepth').val()),
+                        parseFloat($('#waterDepth').val()),
+                        parseFloat($('#waterTemperature').val()),
+                        parseFloat($('#airTemperature').val())
+                    ]
+
+                    $.ajax({
+                        type: 'POST',
+                        url: '/nuralnetwork',
+                        data: JSON.stringify(input),
+                        contentType: 'application/json; charset=utf-8',
+                        dataType: 'json',
+                        success: function (data) {
+                            // Handle the successful response
+                            console.log('Prediction result:', data);
+                            alert('Prediction result: ' + data);
+                        },
+                        error: function (xhr, status, error) {
+                            // Handle the error response
+                            console.error('Error:', error);
+                            alert('Error: ' + error);
+                        }
+                    });
                 });
             });
         });
     </script>
 </body>
+
 </html>

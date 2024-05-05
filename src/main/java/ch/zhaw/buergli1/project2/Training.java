@@ -1,7 +1,6 @@
 package ch.zhaw.buergli1.project2;
 
 import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -9,66 +8,36 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-
-import org.apache.commons.csv.CSVFormat;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
-import ai.djl.basicdataset.tabular.CsvDataset;
-import ai.djl.engine.Engine;
 import ai.djl.metric.Metrics;
 import ai.djl.training.EasyTrain;
 import ai.djl.training.Trainer;
 import ai.djl.training.TrainingConfig;
 import ai.djl.training.TrainingResult;
 import ai.djl.training.dataset.ArrayDataset;
-import ai.djl.training.dataset.Batch;
-import ai.djl.training.dataset.Dataset;
 import ai.djl.training.dataset.RandomAccessDataset;
-import ai.djl.training.dataset.RandomSampler;
-import ai.djl.training.dataset.SequenceSampler;
 import ai.djl.translate.TranslateException;
-
+import ai.djl.translate.Translator;
+import ai.djl.MalformedModelException;
 import ai.djl.Model;
-import ai.djl.ModelException;
-import ai.djl.basicdataset.cv.classification.ImageFolder;
-import ai.djl.metric.Metrics;
-import ai.djl.modality.cv.transform.Resize;
-import ai.djl.modality.cv.transform.ToTensor;
+import ai.djl.inference.Predictor;
 import ai.djl.ndarray.NDArray;
 import ai.djl.ndarray.NDManager;
 import ai.djl.ndarray.index.NDIndex;
-import ai.djl.ndarray.types.DataType;
 import ai.djl.ndarray.types.Shape;
-import ai.djl.nn.SequentialBlock;
-import ai.djl.nn.core.Linear;
-import ai.djl.repository.zoo.ModelZoo;
 import ai.djl.training.DefaultTrainingConfig;
-import ai.djl.training.EasyTrain;
-import ai.djl.training.Trainer;
-import ai.djl.training.TrainingConfig;
-import ai.djl.training.TrainingResult;
-import ai.djl.training.dataset.RandomAccessDataset;
 import ai.djl.training.evaluator.Accuracy;
 import ai.djl.training.listener.TrainingListener;
 import ai.djl.training.loss.Loss;
-import ai.djl.translate.TranslateException;
-
-import java.io.IOException;
 import java.nio.file.Path;
-
-import java.nio.file.Paths;
 
 @Component
 public class Training implements ApplicationRunner {
-
-    // represents number of training samples processed before the model is updated
-    private final int BATCH_SIZE = 32;
 
     // the number of passes over the complete dataset
     private final int EPOCHS = 2;
@@ -91,7 +60,7 @@ public class Training implements ApplicationRunner {
 
         // create CsvDataset from the CSV file
         RandomAccessDataset[] datasets = createTest(waterQualityData);
-
+        System.out.println(datasets);
         // set loss function, which seeks to minimize errors
         Loss loss = Loss.softmaxCrossEntropyLoss();
 
@@ -105,7 +74,7 @@ public class Training implements ApplicationRunner {
 
         // initialize trainer with proper input shape
         // Assuming your CSV data has 3 columns, set the input shape accordingly
-        Shape inputShape = new Shape(1, 18);
+        Shape inputShape = new Shape(1, 6);
         trainer.initialize(inputShape);
 
         // find the patterns in data
@@ -119,12 +88,8 @@ public class Training implements ApplicationRunner {
         model.setProperty("Loss", String.format("%.5f", result.getValidateLoss()));
 
         // save the model after done training for inference later
-        // model saved as shoeclassifier-0000.params
+        // model saved as dataclassifier-0000.params
         model.save(modelDir, Models.MODEL_NAME);
-
-        // save labels into model directory
-        // For CSV data, you may need to handle the labels differently
-        // Models.saveSynset(modelDir, dataset.getSynset());
     }
 
     private void readCsvFile() {
@@ -179,18 +144,19 @@ public class Training implements ApplicationRunner {
 
     private RandomAccessDataset[] createTest(List<WaterQualityData> waterQualityData) {
         // Prepare the data
-        NDManager manager = NDManager.newBaseManager("OnnxRuntime");
-        NDArray[] features = new NDArray[waterQualityData.size()];
-        NDArray labels = manager.create(new Shape(waterQualityData.size()));
-        for (int i = 0; i < waterQualityData.size(); i++) {
+        NDManager manager = NDManager.newBaseManager(null, "PyTorch");
+        int numSamples = waterQualityData.size();
+        NDArray features = manager.create(new Shape(numSamples, 6));
+        NDArray labels = manager.create(new Shape(numSamples));
+    
+        for (int i = 0; i < numSamples; i++) {
             WaterQualityData data = waterQualityData.get(i);
-            features[i] = manager.create(new float[] {
-                    (float) data.getSalinity(),
-                    (float) data.getDissolvedOxygen(),
-                    (float) data.getpH(),
-                    (float) data.getSecchiDepth(),
-                    (float) data.getWaterDepth()
-            });
+            features.set(new NDIndex(i, 0), manager.create((float) data.getSalinity()));
+            features.set(new NDIndex(i, 1), manager.create((float) data.getDissolvedOxygen()));
+            features.set(new NDIndex(i, 2), manager.create((float) data.getpH()));
+            features.set(new NDIndex(i, 3), manager.create((float) data.getSecchiDepth()));
+            features.set(new NDIndex(i, 4), manager.create((float) data.getWaterDepth()));
+            features.set(new NDIndex(i, 5), manager.create((float) data.getAirTemperature()));
             labels.set(new NDIndex(i), manager.create(getSiteIdIndex(data.getSiteId())));
         }
     
@@ -207,8 +173,7 @@ public class Training implements ApplicationRunner {
                 .build();
     
         return new RandomAccessDataset[] { trainDataset, validationDataset };
-    }
-    
+    }    
 
     private int getSiteIdIndex(String siteId) {
         switch (siteId) {
@@ -231,6 +196,11 @@ public class Training implements ApplicationRunner {
         return new DefaultTrainingConfig(loss)
                 .addEvaluator(new Accuracy())
                 .addTrainingListeners(TrainingListener.Defaults.logging());
+    }
+
+    public int predict(NDArray input) throws TranslateException, MalformedModelException, IOException {
+        WaterQualityPredictor predictor = new WaterQualityPredictor();
+        return predictor.predict(input);
     }
 
 }

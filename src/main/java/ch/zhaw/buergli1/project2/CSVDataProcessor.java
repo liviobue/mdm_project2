@@ -33,7 +33,7 @@ public class CSVDataProcessor {
                         // Fill out empty values with appropriate data
                         switch (i) {
                             case 0:
-                                row[i] = "DefaultSiteId"; // Example default value for Site_Id
+                                row[i] = "A"; // Example default value for Site_Id
                                 break;
                             case 1:
                                 row[i] = "DefaultUnitId"; // Example default value for Unit_Id
