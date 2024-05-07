@@ -139,11 +139,8 @@ public class WaterQualityDataLoader implements ApplicationRunner {
     public void trainRegression() throws Exception {
         Instances data = createWekaInstances();
 
-        model = new LinearRegression();
-        model.buildClassifier(data);
-
         // Create a linear regression model
-        LinearRegression model = new LinearRegression();
+        model = new LinearRegression();
         model.buildClassifier(data);
 
         // Evaluate the model
@@ -167,9 +164,5 @@ public class WaterQualityDataLoader implements ApplicationRunner {
         instance.setValue(5, waterQualityData.getAirTemperature());
         data.add(instance);
         return model.classifyInstance(instance);
-    }
-
-    public void trainModel() throws Exception{
-        // TODO
     }
 }

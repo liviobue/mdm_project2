@@ -21,7 +21,7 @@ public final class Models {
     public static final int NUM_OF_FEATURES = 6;
 
     // the number of output classes
-    public static final int NUM_OF_OUTPUT = 4;
+    public static final int NUM_OF_OUTPUT = 5;
 
     // the name of the model
     public static final String MODEL_NAME = "dataclassifier";
